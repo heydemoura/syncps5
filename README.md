@@ -17,6 +17,15 @@ syncps5.elf
       built with Go 1.27.1 + patches/go1.27.1-ps5.patch
 ```
 
+## Screenshots
+
+The Syncthing shortcut in the Media tab of the PS5 home screen. Its link
+points to the Syncthing GUI on the console (`http://127.0.0.1:8384/`).
+
+![Syncthing shortcut in the Media tab of the PS5 home screen](docs/screenshots/media-tab-1.jpg)
+
+![Syncthing shortcut focused in the Media tab](docs/screenshots/media-tab-2.jpg)
+
 ## Using it
 
 | | |
