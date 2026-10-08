@@ -22,7 +22,7 @@ for p in patches/syncthing/*.patch; do
   # plain "git apply" there would silently skip the files.
   (cd "$ST" && git --git-dir=/dev/null apply -p1 "$SYNCPS5_ROOT/$p")
 done
-grep -q "ps5ExitHook(int(status))" "$ST/cmd/syncthing/main.go" || { echo "syncthing patches did not apply"; exit 1; }
+grep -q "ps5ExitHook(int(status))" "$ST/cmd/syncthing/main.go" && grep -q "NoAuthHandler(handler)" "$ST/lib/api/api.go" || { echo "syncthing patches did not apply"; exit 1; }
 cp ps5/*.go "$ST/cmd/syncthing/"
 
 export GOROOT="$PS5_GOROOT" GOTOOLCHAIN=local GOFLAGS=-mod=mod

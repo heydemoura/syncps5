@@ -1,0 +1,38 @@
+diff --git a/cmd/syncthing/main.go b/cmd/syncthing/main.go
+index 14b850e64..56cb6264d 100644
+--- a/cmd/syncthing/main.go
++++ b/cmd/syncthing/main.go
+@@ -615,6 +615,7 @@ func (c *serveCmd) syncthingMain() {
+ 	_ = lf.Unlock()
+ 	_ = os.Remove(locations.Get(locations.LockFile))
+ 
++	ps5ExitHook(int(status))
+ 	os.Exit(int(status))
+ }
+ 
+diff --git a/lib/api/api.go b/lib/api/api.go
+index 5fa3e4335..d7887394b 100644
+--- a/lib/api/api.go
++++ b/lib/api/api.go
+@@ -216,6 +216,11 @@ func sendJSON(w http.ResponseWriter, jsonObject any) {
+ 	fmt.Fprintf(w, "%s\n", bs)
+ }
+ 
++// NoAuthHandler, when set, wraps the GUI/API handler whenever no GUI
++// authentication is configured. The PS5 build uses it to refuse service
++// without a password.
++var NoAuthHandler func(http.Handler) http.Handler
++
+ func (s *service) Serve(ctx context.Context) error {
+ 	listener, err := s.getListener(s.cfg.GUI())
+ 	if err != nil {
+@@ -378,6 +383,9 @@ func (s *service) Serve(ctx context.Context) error {
+ 
+ 		// Logout is a no-op without a valid session cookie, so /noauth/ is fine here
+ 		restMux.Handler(http.MethodPost, "/rest/noauth/auth/logout", http.HandlerFunc(authMW.handleLogout))
++	} else if NoAuthHandler != nil {
++		// Builds that must never serve the GUI without authentication.
++		handler = NoAuthHandler(handler)
+ 	}
+ 
+ 	// Redirect to HTTPS if we are supposed to

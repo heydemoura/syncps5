@@ -47,6 +47,11 @@
 #define GO_MAXPROCS "4"
 #endif
 
+/* Port of the Syncthing GUI (and of the first-run setup page). */
+#ifndef SYNCPS5_GUI_PORT
+#define SYNCPS5_GUI_PORT "8384"
+#endif
+
 #define PROC_NAME "syncps5"
 #define INSTALLED_ELF SYNCPS5_DIR "/syncps5.elf"
 #define INSTALL_MAGIC "SYNCPS5INSTALL01"
@@ -315,15 +320,15 @@ main(int argc, char **argv) {
   }
 
   local_ip(ip, sizeof(ip));
-  report_log("[syncps5] Syncthing GUI: http://%s:8384  logs: nc %s 8385", ip, ip);
-  report_notify("Syncthing starting\nhttp://%s:8384", ip);
+  report_log("[syncps5] Syncthing GUI: http://%s:" SYNCPS5_GUI_PORT "  logs: nc %s 8385", ip, ip);
+  report_notify("Syncthing starting\nhttp://%s:" SYNCPS5_GUI_PORT, ip);
 
   static char *envp[] = {
       "HOME=" SYNCPS5_DIR,
       "TMPDIR=" SYNCPS5_DIR "/tmp",
       "STHOMEDIR=" SYNCPS5_DIR "/home",
       "STMONITORED=1", /* no monitor process: the PS5 cannot fork/exec */
-      "STGUIADDRESS=0.0.0.0:8384",
+      "STGUIADDRESS=0.0.0.0:" SYNCPS5_GUI_PORT,
       "STNORESTART=1",
       "STNOUPGRADE=1",
       "STNOBROWSER=1",
