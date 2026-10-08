@@ -1,3 +1,36 @@
+syncps5: Syncthing for the PlayStation 5
+Copyright (C) 2026 Heyde Moura (https://github.com/heydemoura)
+
+This program is free software: you can redistribute it and/or modify it
+under the terms of the GNU General Public License as published by the Free
+Software Foundation, either version 3 of the License, or (at your option)
+any later version. The full text of the license follows below.
+
+This project builds on the work of others, who keep their copyrights:
+
+  Syncthing (third_party/syncthing, and patches/syncthing which modify it)
+    Copyright (C) 2014-2026 The Syncthing Authors
+    Licensed under the Mozilla Public License, version 2.0; see
+    third_party/syncthing/LICENSE and
+    https://github.com/syncthing/syncthing/blob/main/AUTHORS
+
+  ps5-tailscale (the Go loader and launcher code in launcher/, the
+  home screen helper in appicon/, and patches/go1.27.1-ps5.patch)
+    Copyright (C) 2026 the ps5-tailscale contributors
+    (https://github.com/holdmysocks/ps5-tailscale)
+    Licensed under the GNU General Public License, version 3
+
+  The Go programming language (patched by patches/go1.27.1-ps5.patch)
+    Copyright 2009 The Go Authors
+    Licensed under a BSD-style license; see https://go.dev/LICENSE
+
+  ps5-payload-sdk (linked into the payload)
+    Copyright (C) John Törnblom and contributors
+    (https://github.com/ps5-payload-dev/sdk)
+    Licensed under the GNU General Public License, version 3
+
+-------------------------------------------------------------------------
+
                     GNU GENERAL PUBLIC LICENSE
                        Version 3, 29 June 2007
 
