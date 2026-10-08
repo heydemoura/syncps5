@@ -174,6 +174,15 @@ over LAN, relays and global discovery (IPv4), GUI restart.
 
 ## License
 
-GPLv3 (see `LICENSE`): the launcher and the Go patch derive from ps5-tailscale
-(GPLv3). Syncthing is MPL-2.0 and is included unmodified as a submodule apart
-from `patches/syncthing/`.
+syncps5 is Copyright (C) 2026 Heyde Moura and is licensed under the GPLv3
+(see `LICENSE`).
+
+It builds on the work of others, who keep their copyrights:
+
+- **Syncthing** is Copyright (C) 2014-2026 The Syncthing Authors and is
+  licensed under MPL-2.0. It is included as a submodule, unmodified except
+  for `patches/syncthing/`.
+- **The launcher, the home screen helper and the Go patch** derive from
+  [ps5-tailscale](https://github.com/holdmysocks/ps5-tailscale), under the GPLv3.
+- **Go** is Copyright The Go Authors, under a BSD-style license.
+- **[ps5-payload-sdk](https://github.com/ps5-payload-dev/sdk)** is under the GPLv3.
