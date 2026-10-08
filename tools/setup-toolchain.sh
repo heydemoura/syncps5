@@ -34,8 +34,12 @@ fi
 # LLVM overlay: the SDK looks for ld.lld next to clang (llvm-config --bindir).
 find_tool() { for c in "$@"; do command -v "$c" 2>/dev/null && return 0; done; return 1; }
 LLVM_CFG_REAL="$(find_tool llvm-config-23 llvm-config-22 llvm-config-21 llvm-config-20 llvm-config-19 llvm-config-18 llvm-config)" || { echo "llvm-config not found"; exit 1; }
-LLD="$(find_tool ld.lld "$( (brew --prefix lld 2>/dev/null || true) )/bin/ld.lld")" || { echo "ld.lld not found"; exit 1; }
 LLVM_BIN="$("$LLVM_CFG_REAL" --bindir)"
+if [ -x "$LLVM_BIN/ld.lld" ]; then
+  LLD="$LLVM_BIN/ld.lld"   # e.g. Debian/Ubuntu /usr/lib/llvm-N/bin
+else
+  LLD="$(find_tool ld.lld "$( (brew --prefix lld 2>/dev/null || true) )/bin/ld.lld")" || { echo "ld.lld not found"; exit 1; }
+fi
 O="$TOOLCHAIN_DIR/llvm/bin"
 rm -rf "$TOOLCHAIN_DIR/llvm"; mkdir -p "$O"
 for f in "$LLVM_BIN"/*; do ln -s "$f" "$O/"; done

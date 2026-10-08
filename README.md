@@ -70,6 +70,18 @@ Variables (see `tools/env.sh`): `PS5_HOST`, `PS5_PORT` (9021),
 `SYNCPS5_LOG_PORT` (8385), `TOOLCHAIN_DIR`, `PS5_PAYLOAD_SDK`, `PS5_GOROOT`,
 `LLVM_CONFIG`, `MAXPROCS` (build-time `GOMAXPROCS`, default 4).
 
+### Releases
+
+GitHub Actions (`.github/workflows/build.yml`) builds the payload on every
+push and pull request and keeps it as a workflow artifact. Pushing a tag
+starting with `v` also publishes a GitHub release with
+`syncps5-<tag>.elf` and `SHA256SUMS` attached. A tag with a hyphen, such as
+`v1.0.0-rc1`, becomes a pre-release.
+
+```sh
+git tag -a v1.0.0 -m "syncps5 v1.0.0" && git push origin v1.0.0
+```
+
 ### Upgrading Syncthing
 
 ```sh

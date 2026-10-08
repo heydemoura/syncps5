@@ -1,0 +1,100 @@
+# Builds syncps5.elf on every push and pull request. Pushing a tag that
+# starts with "v" (e.g. v1.0.0) also publishes a GitHub release with the
+# payload attached.
+name: build
+
+on:
+  push:
+    branches: [main]
+    tags: ["v*"]
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          submodules: recursive
+          fetch-depth: 0 # tags, for the version string
+
+      - name: Install build dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends clang-18 lld-18 llvm-18 rsync unzip
+
+      - name: Cache toolchain
+        uses: actions/cache@v4
+        with:
+          path: toolchain
+          key: toolchain-${{ runner.os }}-${{ hashFiles('patches/go1.27.1-ps5.patch', 'tools/setup-toolchain.sh') }}
+
+      - name: Cache Go modules
+        uses: actions/cache@v4
+        with:
+          path: build/gomodcache
+          key: gomod-${{ hashFiles('third_party/syncthing/go.sum') }}
+
+      - name: Set up toolchain
+        run: tools/setup-toolchain.sh
+
+      - name: Build
+        run: tools/build.sh
+
+      - name: Name the payload
+        id: name
+        run: |
+          version="$(git describe --tags --always --dirty)"
+          echo "version=$version" >> "$GITHUB_OUTPUT"
+          mkdir -p dist
+          cp out/syncps5.elf "dist/syncps5-$version.elf"
+          (cd dist && sha256sum syncps5-*.elf > SHA256SUMS)
+          cat dist/SHA256SUMS
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: syncps5-${{ steps.name.outputs.version }}
+          path: dist/
+          if-no-files-found: error
+
+  release:
+    if: startsWith(github.ref, 'refs/tags/v')
+    needs: build
+    runs-on: ubuntu-24.04
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - uses: actions/download-artifact@v4
+        with:
+          path: dist
+          merge-multiple: true
+
+      - name: Create release
+        env:
+          GH_TOKEN: ${{ github.token }}
+          TAG: ${{ github.ref_name }}
+        run: |
+          prerelease=""
+          case "$TAG" in *-*) prerelease="--prerelease" ;; esac
+          cat > notes.md <<NOTES
+          Send the payload to an ELF loader on the PS5 (port 9021), e.g.:
+
+          \`\`\`sh
+          nc -q0 <ps5-ip> 9021 < syncps5-$TAG.elf
+          \`\`\`
+
+          Then open \`http://<ps5-ip>:8384\` and set a GUI password first. See the README for installing it at \`/data/syncps5/syncps5.elf\` (needed for restart from the GUI and for autoloaders).
+          NOTES
+          gh release create "$TAG" dist/* \
+            --title "syncps5 $TAG" \
+            --notes-file notes.md \
+            --generate-notes \
+            $prerelease
