@@ -12,7 +12,7 @@ plus a small PS5 integration layer:
 syncps5.elf
  ├─ launcher (C, ps5-payload-sdk)       launcher/
  │    privileges, low scheduling priority, single instance,
- │    self-install, on-screen notification, then loads ↓ in-process
+ │    self-install, home screen shortcut (appicon/), then loads ↓ in-process
  └─ syncthing (Go, GOOS=freebsd, PIE)   third_party/syncthing + ps5/ + patches/syncthing/
       built with Go 1.27.1 + patches/go1.27.1-ps5.patch
 ```
@@ -24,7 +24,8 @@ syncps5.elf
 | Web GUI | `http://<ps5-ip>:8384` |
 | Sync protocol | TCP/QUIC `22000`, local discovery UDP `21027` |
 | Live log | `nc <ps5-ip> 8385` (or `tools/logs.sh`) |
-| Files on the console | `/data/syncps5/` — `home/` (config, keys, database), `syncthing.log`, `launcher.log`, `syncps5.elf` |
+| Files on the console | `/data/syncps5/`: `home/` (config, keys, database), `syncthing.log`, `launcher.log`, `syncps5.elf`, `icon-installed` |
+| Home screen | a "Syncthing" shortcut in the Media tab (app `STPS00001`) |
 
 ### First run: setting the GUI password
 
@@ -44,6 +45,16 @@ Then add your other devices and folders as on any Syncthing install. Folder
 paths are console paths, e.g. `/data/...` or `/user/...`. New folders default
 to `~/Sync` = `/data/syncps5/Sync`.
 
+### Home screen shortcut and notifications
+
+- The first time the payload runs, it adds a **Syncthing** shortcut to the
+  **Media** tab of the home screen. It opens the GUI in the console's browser.
+  If you delete the shortcut, it stays deleted. To get it back, delete
+  `/data/syncps5/icon-installed` and start the payload again.
+- When the GUI is up, a notification says Syncthing has started and on which
+  port. If the GUI does not come up within five minutes, a notification says
+  so instead.
+
 ### Behaviour as a service
 
 - Runs in the background, also while games are played. It runs at the lowest
@@ -51,12 +62,16 @@ to `~/Sync` = `/data/syncps5/Sync`.
 - Sending the payload again stops the running instance (SIGTERM, clean
   shutdown) and takes over, so it is also the way to upgrade.
 - *Restart* in the GUI (or a config change that needs one) relaunches the
-  payload through the ELF loader from `/data/syncps5/syncps5.elf`.
+  payload through the ELF loader, from the newest installed copy:
+  `/data/syncps5/syncps5.elf` or the one in pldmgr.
   *Shutdown* stops it for good.
 - The payload is not persistent across reboots: the jailbreak and the ELF
-  loader have to be loaded again, and so does this payload. To start it
-  automatically, point your payload autoloader at
-  `/data/syncps5/syncps5.elf`. Or ask the ELF loader to run it:
+  loader have to be loaded again, and so does this payload.
+- **With Payload Manager (pldmgr):** `tools/install-pldmgr.sh` uploads the
+  payload over FTP to `/data/pldmgr/payloads/syncps5/syncps5.elf`. pldmgr then
+  lists it, and can start it. To start it at boot, add `syncps5.elf` to
+  `/data/pldmgr/autoload.txt`, or use pldmgr's autoload settings.
+- Without pldmgr, ask the ELF loader to run the installed copy:
   `echo file:/data/syncps5/syncps5.elf | nc -q0 <ps5-ip> 9021`.
 - The Syncthing upgrade mechanism is disabled; upgrade by rebuilding.
 
@@ -70,16 +85,19 @@ tools/setup-toolchain.sh        # ps5-payload-sdk, patched Go, LLVM overlay → 
 tools/build.sh                  # → out/syncps5.elf
 PS5_HOST=192.168.0.221 tools/deploy.sh   # send + install, prints the launcher output
 PS5_HOST=192.168.0.221 tools/logs.sh logs/ps5.log   # follow the log, reconnects across restarts
+PS5_HOST=192.168.0.221 tools/install-pldmgr.sh --run # install into pldmgr over FTP and start it
 ```
+
+`tools/install-pldmgr.sh` needs an FTP server on the console, on port 2121
+by default (`PS5_FTP_PORT`).
 
 `tools/deploy.sh` sends the ELF to the loader followed by a second copy that
 the launcher saves as `/data/syncps5/syncps5.elf` (`--no-install` skips that).
 
 Variables (see `tools/env.sh`): `PS5_HOST`, `PS5_PORT` (9021),
 `SYNCPS5_LOG_PORT` (8385), `TOOLCHAIN_DIR`, `PS5_PAYLOAD_SDK`, `PS5_GOROOT`,
-`LLVM_CONFIG`, `MAXPROCS` (build-time `GOMAXPROCS`, default 4), and
-`EXTRA_CFLAGS`. For example, `EXTRA_CFLAGS='-DSYNCPS5_GUI_PORT="8386"'` moves
-the GUI to another port.
+`LLVM_CONFIG`, `MAXPROCS` (build-time `GOMAXPROCS`, default 4), `GUI_PORT`
+(default 8384; also used by the shortcut's link) and `EXTRA_CFLAGS`.
 
 ### Releases
 

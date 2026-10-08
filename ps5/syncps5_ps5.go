@@ -26,7 +26,6 @@ import (
 
 const (
 	ps5Dir        = "/data/syncps5"
-	ps5Payload    = ps5Dir + "/syncps5.elf"
 	ps5Log        = ps5Dir + "/syncthing.log"
 	ps5LogAddr    = ":8385"
 	ps5ElfLoader  = "127.0.0.1:9021"
@@ -36,6 +35,7 @@ func init() {
 	ps5SetupStdio()
 	ps5SetupResolver()
 	go ps5ServeLogs()
+	go ps5AnnounceStarted()
 
 	// Syncthing runs as `serve` by default, but be explicit.
 	if len(os.Args) <= 1 {
@@ -49,8 +49,9 @@ func init() {
 		if code != exitRestart {
 			return
 		}
-		if _, err := os.Stat(ps5Payload); err != nil {
-			fmt.Fprintf(os.Stderr, "[syncps5] restart requested but %s is missing; not relaunching\n", ps5Payload)
+		payload := ps5InstalledPayload()
+		if payload == "" {
+			fmt.Fprintf(os.Stderr, "[syncps5] restart requested but no installed payload found in %v; not relaunching\n", ps5PayloadPaths)
 			return
 		}
 		conn, err := net.DialTimeout("tcp", ps5ElfLoader, 3*time.Second)
@@ -58,13 +59,86 @@ func init() {
 			fmt.Fprintf(os.Stderr, "[syncps5] relaunch: %v\n", err)
 			return
 		}
-		fmt.Fprintf(conn, "file:%s\n", ps5Payload)
+		fmt.Fprintf(conn, "file:%s\n", payload)
 		fmt.Fprintf(os.Stderr, "[syncps5] relaunching via ELF loader\n")
 		// The new instance's launcher stops this process if it is still
 		// around; give the loader a moment to read the request.
 		time.Sleep(500 * time.Millisecond)
 		conn.Close()
 	}
+}
+
+// Where an installed copy of the payload can be: the copy tools/deploy.sh
+// leaves, and the one installed into Payload Manager (pldmgr) by
+// tools/install-pldmgr.sh. The newest one is relaunched.
+var ps5PayloadPaths = []string{
+	ps5Dir + "/syncps5.elf",
+	"/data/pldmgr/payloads/syncps5/syncps5.elf",
+}
+
+func ps5InstalledPayload() string {
+	best := ""
+	var bestTime time.Time
+	for _, p := range ps5PayloadPaths {
+		if st, err := os.Stat(p); err == nil && st.Mode().IsRegular() && (best == "" || st.ModTime().After(bestTime)) {
+			best, bestTime = p, st.ModTime()
+		}
+	}
+	return best
+}
+
+// ps5AnnounceStarted waits until the GUI accepts connections and then says
+// so on the console's screen and in the log.
+func ps5AnnounceStarted() {
+	port := os.Getenv("SYNCPS5_GUI_PORT")
+	if port == "" {
+		port = "8384"
+	}
+	deadline := time.Now().Add(5 * time.Minute)
+	for time.Now().Before(deadline) {
+		c, err := net.DialTimeout("tcp", net.JoinHostPort("127.0.0.1", port), time.Second)
+		if err == nil {
+			c.Close()
+			ip := ps5LocalIP()
+			fmt.Fprintf(os.Stderr, "[syncps5] Syncthing started; GUI on port %s (http://%s:%s)\n", port, ip, port)
+			ps5Notify("Syncthing started on port %s\nhttp://%s:%s", port, ip, port)
+			return
+		}
+		time.Sleep(time.Second)
+	}
+	fmt.Fprintf(os.Stderr, "[syncps5] the GUI did not come up on port %s\n", port)
+	ps5Notify("Syncthing: the GUI did not come up on port %s\nSee /data/syncps5/syncthing.log", port)
+}
+
+// ps5Notify shows a pop-up on the PS5 screen, as libkernel's
+// sceKernelSendNotificationRequest does: a 0xC30 byte request with the
+// message at 0x2D, written to /dev/notification0 (from ps5-tailscale).
+func ps5Notify(format string, args ...any) {
+	const size, offset = 0xC30, 0x2D
+	var req [size]byte
+	msg := fmt.Sprintf(format, args...)
+	if len(msg) > size-offset-1 {
+		msg = msg[:size-offset-1]
+	}
+	copy(req[offset:], msg)
+	fd, err := syscall.Open("/dev/notification0", syscall.O_WRONLY|syscall.O_NONBLOCK, 0)
+	if err != nil {
+		return
+	}
+	defer syscall.Close(fd)
+	_, _ = syscall.Write(fd, req[:])
+}
+
+func ps5LocalIP() string {
+	addrs, err := net.InterfaceAddrs()
+	if err == nil {
+		for _, a := range addrs {
+			if ipn, ok := a.(*net.IPNet); ok && !ipn.IP.IsLoopback() && ipn.IP.To4() != nil {
+				return ipn.IP.String()
+			}
+		}
+	}
+	return "<ps5-ip>"
 }
 
 // The payload's stdin, stdout and stderr are the ELF loader's TCP

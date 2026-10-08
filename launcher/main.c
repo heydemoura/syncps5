@@ -31,6 +31,7 @@
 #include <ps5/kernel.h>
 
 #include "goload.h"
+#include "homeicon.h"
 #include "report.h"
 
 #ifndef GO_IMAGE
@@ -312,6 +313,7 @@ main(int argc, char **argv) {
   install_from_stdin();
   stop_other_instances();
   syscall(SYS_thr_set_name, -1, PROC_NAME);
+  home_icon_install_once();
 
   if (leave_realtime_class()) {
     report_fail("could not lower the scheduling priority; not starting, "
@@ -321,7 +323,6 @@ main(int argc, char **argv) {
 
   local_ip(ip, sizeof(ip));
   report_log("[syncps5] Syncthing GUI: http://%s:" SYNCPS5_GUI_PORT "  logs: nc %s 8385", ip, ip);
-  report_notify("Syncthing starting\nhttp://%s:" SYNCPS5_GUI_PORT, ip);
 
   static char *envp[] = {
       "HOME=" SYNCPS5_DIR,
@@ -335,6 +336,7 @@ main(int argc, char **argv) {
       "GOMAXPROCS=" GO_MAXPROCS,
       "GOMEMLIMIT=768MiB",
       "SYNCPS5=" SYNCPS5_VERSION,
+      "SYNCPS5_GUI_PORT=" SYNCPS5_GUI_PORT,
       0,
   };
 

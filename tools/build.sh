@@ -6,6 +6,7 @@ source "$(dirname "$0")/env.sh"
 cd "$SYNCPS5_ROOT"
 
 : "${MAXPROCS:=4}"
+: "${GUI_PORT:=8384}"
 B="$SYNCPS5_ROOT/build"
 OUT="$SYNCPS5_ROOT/out"
 ST="$B/syncthing"
@@ -46,12 +47,25 @@ LDFLAGS+=" -X github.com/syncthing/syncthing/lib/build.Tags=ps5,noupgrade"
 (cd "$ST" && GOOS=freebsd GOARCH=amd64 CGO_ENABLED=0 "$GO" build -buildmode=pie -trimpath \
   -tags ps5,noupgrade -ldflags "$LDFLAGS" -o "$B/syncthing.bin" ./cmd/syncthing)
 
+echo ">> building home screen shortcut helper"
+mkdir -p "$B/appicon"
+sed "s/@GUI_PORT@/$GUI_PORT/" appicon/param.json.in > "$B/appicon/param.json"
+cp appicon/icon0.png "$B/appicon/icon0.png"
+# The app installer library only loads with these, in this order (as in the
+# SDK's install_app sample); with libSceAppInstUtil alone the payload never
+# starts.
+"$PS5_PAYLOAD_SDK/bin/prospero-clang" -O2 -Wall -DASSET_DIR="\"$B/appicon\"" \
+  -lSceIpmi -lSceAppInstUtil -lSceUserService -lSceSystemService \
+  -o "$B/appicon.elf" appicon/main.c
+
 echo ">> building launcher"
 "$PS5_PAYLOAD_SDK/bin/prospero-clang" -O2 -Wall \
   -DGO_IMAGE="\"$B/syncthing.bin\"" \
   -DGO_MAXPROCS="\"$MAXPROCS\"" \
+  -DSYNCPS5_GUI_PORT="\"$GUI_PORT\"" \
+  -DICON_HELPER="\"$B/appicon.elf\"" \
   -DSYNCPS5_VERSION="\"$SYNCPS5_VERSION (syncthing $ST_VERSION)\"" \
   ${EXTRA_CFLAGS:-} \
-  -o "$OUT/syncps5.elf" launcher/main.c launcher/goload.c launcher/report.c
+  -o "$OUT/syncps5.elf" launcher/main.c launcher/goload.c launcher/report.c launcher/homeicon.c
 
 ls -la "$OUT/syncps5.elf"
