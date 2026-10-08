@@ -28,7 +28,20 @@ if [ ! -x "$PS5_GOROOT/bin/go" ] || ! grep -q ps5 "$PS5_GOROOT/src/syscall/ps5_f
   mv "$tmp/go/go" "$PS5_GOROOT"
   (cd "$PS5_GOROOT" && git apply -p1 "$SYNCPS5_ROOT/patches/go1.27.1-ps5.patch")
   cp "$PS5_GOROOT/bin/go" "$PS5_GOROOT/bin/go-bootstrap"
-  (cd "$PS5_GOROOT" && GOTOOLCHAIN=local GOROOT="$PS5_GOROOT" ./bin/go-bootstrap install cmd/go cmd/link)
+  # GOBIN pinned: cmd/go must replace $PS5_GOROOT/bin/go, wherever the
+  # environment would otherwise install binaries.
+  (cd "$PS5_GOROOT" && env -u GOFLAGS GOTOOLCHAIN=local GOROOT="$PS5_GOROOT" GOBIN="$PS5_GOROOT/bin" \
+    ./bin/go-bootstrap install cmd/go cmd/link)
+fi
+
+# The patched toolchain must link a freebsd/amd64 PIE without cgo.
+check="$tmp/check"; mkdir -p "$check"
+printf 'module check\n\ngo 1.27\n' > "$check/go.mod"
+printf 'package main\n\nfunc main() {}\n' > "$check/main.go"
+if ! (cd "$check" && env -u GOFLAGS -u GOBIN GOROOT="$PS5_GOROOT" GOTOOLCHAIN=local GOOS=freebsd GOARCH=amd64 \
+      CGO_ENABLED=0 GOCACHE="$tmp/gocache" "$PS5_GOROOT/bin/go" build -buildmode=pie -o "$check/out" .); then
+  echo "the Go toolchain in $PS5_GOROOT is not patched for the PS5; delete it and run this again" >&2
+  exit 1
 fi
 
 # LLVM overlay: the SDK looks for ld.lld next to clang (llvm-config --bindir).
