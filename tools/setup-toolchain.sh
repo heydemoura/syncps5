@@ -26,7 +26,10 @@ if [ ! -x "$PS5_GOROOT/bin/go" ] || ! grep -q ps5 "$PS5_GOROOT/src/syscall/ps5_f
   rm -rf "$PS5_GOROOT"; mkdir -p "$tmp/go"
   tar -C "$tmp/go" -xzf "$tmp/go.tgz"
   mv "$tmp/go/go" "$PS5_GOROOT"
-  (cd "$PS5_GOROOT" && git apply -p1 "$SYNCPS5_ROOT/patches/go1.27.1-ps5.patch")
+  # --git-dir=/dev/null: inside this repository's checkout, a plain
+  # "git apply" would silently skip every file.
+  (cd "$PS5_GOROOT" && git --git-dir=/dev/null apply -p1 "$SYNCPS5_ROOT/patches/go1.27.1-ps5.patch")
+  [ -f "$PS5_GOROOT/src/syscall/ps5_freebsd_amd64.go" ] || { echo "Go patch did not apply" >&2; exit 1; }
   cp "$PS5_GOROOT/bin/go" "$PS5_GOROOT/bin/go-bootstrap"
   # GOBIN pinned: cmd/go must replace $PS5_GOROOT/bin/go, wherever the
   # environment would otherwise install binaries.
