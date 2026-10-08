@@ -22,8 +22,6 @@ import (
 	// discovery over HTTPS, usage reporting) fails to verify certificates.
 	_ "golang.org/x/crypto/x509roots/fallback"
 	"golang.org/x/net/route"
-
-	"github.com/syncthing/syncthing/lib/api"
 )
 
 const (
@@ -67,11 +65,6 @@ func init() {
 		time.Sleep(500 * time.Millisecond)
 		conn.Close()
 	}
-
-	// Last: Syncthing does not start until its GUI has a password
-	// (syncps5_auth.go). This must come after stdio and logging are set up.
-	api.NoAuthHandler = ps5RefuseWithoutAuth
-	ps5RequirePassword()
 }
 
 // The payload's stdin, stdout and stderr are the ELF loader's TCP

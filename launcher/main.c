@@ -47,7 +47,7 @@
 #define GO_MAXPROCS "4"
 #endif
 
-/* Port of the Syncthing GUI (and of the first-run setup page). */
+/* Port of the Syncthing GUI. */
 #ifndef SYNCPS5_GUI_PORT
 #define SYNCPS5_GUI_PORT "8384"
 #endif

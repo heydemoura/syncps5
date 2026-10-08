@@ -28,27 +28,15 @@ syncps5.elf
 
 ### First run: setting the GUI password
 
-Syncthing on the PS5 never runs with an unprotected GUI. On the first start
-(and whenever no GUI password is configured) Syncthing itself does not start;
-port 8384 serves a setup page instead:
-
-1. Open `http://<ps5-ip>:8384`. A notification on the PS5 screen shows an
-   8-digit **setup code** (it is shown again each time the page is opened).
-2. Enter the code, a user name and a password (at least 8 characters).
-3. Syncthing starts; sign in with those credentials.
-
-The code proves you are at the console, so nobody else on the network can
-claim the GUI first. After 5 wrong codes a new one is generated. Without a
-screen at hand, the code is also in `/data/syncps5/setup-code.txt` (deleted
-once setup is done).
-
-If the password is removed later (Settings → GUI), the GUI and REST API
-refuse every request and Syncthing restarts into setup mode. To reset a
-forgotten password, delete the `<user>` and `<password>` lines from
-`/data/syncps5/home/config.xml` and send the payload again.
+The first time you open `http://<ps5-ip>:8384`, Syncthing shows its usual
+first-run prompts. A red warning says the GUI can be reached remotely without
+a password, and a notice asks you to set a GUI user and password. Set them
+right away under Actions → Settings → GUI. Until you do, anyone on your
+network who reaches the GUI can share any path on the console, because
+Syncthing runs as root outside the sandbox.
 
 The GUI uses plain HTTP, as Syncthing does by default, so the password
-crosses your LAN unencrypted. Enable "Use HTTPS for GUI" in Settings → GUI
+crosses your LAN unencrypted. Enable "Use HTTPS for GUI" in the same dialog
 to change that. The log port 8385 has no authentication. It shows logs only,
 which include device IDs and folder paths but no credentials or keys.
 
@@ -91,7 +79,7 @@ Variables (see `tools/env.sh`): `PS5_HOST`, `PS5_PORT` (9021),
 `SYNCPS5_LOG_PORT` (8385), `TOOLCHAIN_DIR`, `PS5_PAYLOAD_SDK`, `PS5_GOROOT`,
 `LLVM_CONFIG`, `MAXPROCS` (build-time `GOMAXPROCS`, default 4), and
 `EXTRA_CFLAGS`. For example, `EXTRA_CFLAGS='-DSYNCPS5_GUI_PORT="8386"'` moves
-the GUI and setup page to another port.
+the GUI to another port.
 
 ### Releases
 
@@ -137,9 +125,6 @@ documents them in detail (docs/TECHNICAL.md there). In short:
   - **Restart hook.** The Syncthing patch adds a hook before the final
     `os.Exit`. On restart it asks the ELF loader to start the installed payload
     again.
-  - **GUI password gate** (`ps5/syncps5_auth.go`). The first-run setup page
-    must succeed before Syncthing starts. A hook in Syncthing's API refuses
-    service and triggers a restart if authentication is ever removed.
   - **Logging.** stdio is the loader's socket, and Go dies on `EPIPE` there.
     So stdout and stderr go to `syncthing.log`, which rotates at 16 MiB and is
     served on port 8385.

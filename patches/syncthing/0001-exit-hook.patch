@@ -1,0 +1,12 @@
+diff --git a/cmd/syncthing/main.go b/cmd/syncthing/main.go
+index 14b850e64..56cb6264d 100644
+--- a/cmd/syncthing/main.go
++++ b/cmd/syncthing/main.go
+@@ -615,6 +615,7 @@ func (c *serveCmd) syncthingMain() {
+ 	_ = lf.Unlock()
+ 	_ = os.Remove(locations.Get(locations.LockFile))
+ 
++	ps5ExitHook(int(status))
+ 	os.Exit(int(status))
+ }
+ 
